@@ -1,9 +1,13 @@
 import cv2
 import sys
- 
+import glob
+from common import *
 (major_ver, minor_ver, subminor_ver) = (cv2.__version__).split('.')
- 
-if __name__ == '__main__' :
+
+
+
+def main() -> None:
+    video_path = glob.glob(VIDEO_FOLDER + '*.mp4')[-1]
  
     # Set up tracker.
     # Instead of MIL, you can also use
@@ -32,12 +36,12 @@ if __name__ == '__main__' :
             tracker = cv2.TrackerCSRT_create()
  
     # Read video
-    video = cv2.VideoCapture("videos/chaplin.mp4")
+    video = cv2.VideoCapture(video_path)
  
     # Exit if video not opened.
-    # if not video.isOpened():
-    #     print("Could not open video")
-    #     sys.exit()
+    if not video.isOpened():
+        print("Could not open video")
+        sys.exit()
  
     # Read first frame.
     ok, frame = video.read()
@@ -91,3 +95,7 @@ if __name__ == '__main__' :
         # Exit if ESC pressed
         k = cv2.waitKey(1) & 0xff
         if k == 27 : break
+
+
+if __name__ == '__main__':
+    main()
