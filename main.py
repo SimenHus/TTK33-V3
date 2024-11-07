@@ -14,7 +14,7 @@ def main() -> None:
     # Instead of MIL, you can also use
     # tracker_types = ['BOOSTING', 'MIL','KCF', 'TLD', 'MEDIANFLOW', 'GOTURN', 'MOSSE', 'CSRT']
     tracker = cv2.TrackerKCF_create()
-
+    
     bridge = CvBridge()
     bbox = None
     odom = None
@@ -26,7 +26,9 @@ def main() -> None:
     }
     for topic, msg, t in rosbag_result:
         if topic == ODOM_TOPIC:
+            # NED_to_right_hand = Pose(np.diag([1, -1, -1, 1]))
             odom = Pose.from_ros(msg.pose.pose) # Get odom
+            # odom = NED_to_right_hand@odom
             continue
         
         # color_encoding = 'bgr8'

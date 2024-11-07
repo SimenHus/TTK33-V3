@@ -11,6 +11,18 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 from dataclasses import dataclass, field
 
+
+def project(K, X):
+    """
+    Computes the pinhole projection of a (3 or 4)xN array X using
+    the camera intrinsic matrix K. Returns the pixel coordinates
+    as an array of size 2xN.
+    """
+    X = np.reshape(X, [X.shape[0],-1]) # Needed to support N=1
+    uvw = K@X[:3,:]
+    uvw /= uvw[2,:]
+    return uvw[:2,:]
+
 @dataclass
 class Pose:
     R: 'np.ndarray[3, 3]' = field(default_factory=lambda: np.eye(3))
@@ -57,7 +69,10 @@ class Pose:
         return repr(self.T)
 
     def __matmul__(self, other):
-        return Pose(self.T@other.T)
+        if type(other) == Pose:
+            return Pose(self.T@other.T)
+        else:
+            return self.T@other
     
 
     @staticmethod
