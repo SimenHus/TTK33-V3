@@ -40,7 +40,7 @@ for i, pixel in enumerate(pixels[:-1]):
         T1 = poses[i]
         T2 = poses[i+j]
         
-        T_relative = (T1@T2.inv).T
+        T_relative = (T2@T1.inv).T
         P1 = P
         P2 = P@T_relative
 
@@ -49,18 +49,18 @@ for i, pixel in enumerate(pixels[:-1]):
         object_triang.append((triang[:3]/triang[3]).reshape((3,)))
 
 
-# fig = plt.figure()
-# ax = fig.add_subplot(projection='3d')
+fig = plt.figure()
+ax = fig.add_subplot(projection='3d')
 
 def remove_outliers(data, thresh=1.0):           
     m = np.median(data)                            
     s = np.abs(data-m)                          
     return data[(s<np.median(s)*thresh).all(axis=1)]
 
-# camera_X = camera_trajectory[0, :]
-# camera_Y = camera_trajectory[1, :]
-# camera_Z = camera_trajectory[2, :]
-# # ax.plot(camera_X, camera_Y, camera_Z, label='Camera pos')
+camera_X = camera_trajectory[0, :]
+camera_Y = camera_trajectory[1, :]
+camera_Z = camera_trajectory[2, :]
+# ax.plot(camera_X, camera_Y, camera_Z, label='Camera pos')
 
 object_triang = np.array(object_triang)
 object_triang = remove_outliers(object_triang).T
@@ -101,7 +101,10 @@ bridge = CvBridge()
 timer = cv2.getTickCount()
 last_odom = Pose()
 frame_counter = 0
-for topic, msg, t in rosbag_result:    
+
+world_T = Pose()
+mean_T = Pose(np.eye(3), np.array([avg_X, avg_Y, avg_Z]))
+for topic, msg, t in rosbag_result: 
     # color_encoding = 'bgr8'
     if topic == ODOM_TOPIC:
         last_odom = Pose.from_ros(msg.pose.pose) # Get odom
@@ -117,10 +120,15 @@ for topic, msg, t in rosbag_result:
     
     blue = (255, 0, 0)
     red = (0, 0, 255)
-    X_camera = last_odom.inv@np.array([avg_X, avg_Y, avg_Z, 1])
+    green = (0, 255, 0)
+    X_camera = last_odom@np.array([avg_X, avg_Y, avg_Z, 1])
+    world_origo = last_odom@np.array([0, 0, 1, 1])
     pixel_coords = project(K, X_camera)
+    pixel_coords_w_o = project(K, world_origo)
     cv2.circle(frame, (int(pixel_coords[0]), int(pixel_coords[1])), 5, blue, 2)
     cv2.circle(frame, pixels[frame_counter], 5, red, 2)
+    drawCoordinateAxes(frame, K, (last_odom@world_T).T)
+    drawCoordinateAxes(frame, K, (last_odom@mean_T).T)
 
     # Display FPS on frame
     cv2.putText(frame, "FPS : " + str(int(fps)), (100,50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (50,170,50), 2)
@@ -130,7 +138,7 @@ for topic, msg, t in rosbag_result:
 
     frame_counter += 1
 
-    desired_FPS = 60
+    desired_FPS = 30
     desired_wait_ms = int(1000/desired_FPS)
     # Exit if ESC pressed
     k = cv2.waitKey(desired_wait_ms) & 0xff

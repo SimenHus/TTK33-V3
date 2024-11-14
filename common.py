@@ -1,15 +1,30 @@
+import numpy as np
+from scipy.spatial.transform import Rotation
+from dataclasses import dataclass, field
+
+import matplotlib.patheffects as PathEffects
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import axes3d
+from matplotlib import animation
+
+from scipy.spatial.distance import mahalanobis
+from scipy.stats import chi2
+
+import cv2
+import pickle
+
+import rosbag
+from cv_bridge import CvBridge
+
+
 DATA_FOLDER = '/mnt/c/Users/simen/Desktop/Prog/Python/TTK33/data/'
-FILE = DATA_FOLDER + 'handheld/a_2024-10-15-09-18-03_2.bag'
+FILE = DATA_FOLDER + 'handheld/a_2024-10-15-09-19-31_3.bag'
 TOTAL = '/mnt/c/Users/simen/Desktop/Prog/Python/TTK33/data/handheld/a_2024-10-15-09-19-31_3.bag'
 
 
 ODOM_TOPIC = '/qualisys/morphy/odom'
 VIDEO_TOPIC = '/tracking'
 
-
-import numpy as np
-from scipy.spatial.transform import Rotation
-from dataclasses import dataclass, field
 
 
 def project(K, X):
@@ -23,8 +38,38 @@ def project(K, X):
     uvw /= uvw[2,:]
     return uvw[:2,:]
 
+
+
+def drawCoordinateAxes(img, K, T, scale=1, labels=False):
+    """
+    Visualize the coordinate frame axes of the 4x4 object-to-camera
+    matrix T using the 3x3 intrinsic matrix K.
+
+    Control the length of the axes by specifying the scale argument.
+    """
+    fontFace = cv2.FONT_HERSHEY_PLAIN
+    fontScale = 0.8
+    lineThickness = 3
+    X = T @ np.array([
+        [0,scale,0,0],
+        [0,0,scale,0],
+        [0,0,0,scale],
+        [1,1,1,1]])
+    u, v = project(K, X)
+    u, v = u.astype(int), v.astype(int)
+    cv2.line(img, (u[0], v[0]), (u[1], v[1]), color=(255, 0, 0), thickness=lineThickness)
+    cv2.line(img, (u[0], v[0]), (u[2], v[2]), color=(0, 255, 0), thickness=lineThickness)
+    cv2.line(img, (u[0], v[0]), (u[3], v[3]), color=(0, 0, 255), thickness=lineThickness)
+    if labels:
+        cv2.putText(img, 'X', (u[1], v[1]), fontFace, fontScale, (255, 255, 255))
+        cv2.putText(img, 'Y', (u[2], v[2]), fontFace, fontScale, (255, 255, 255))
+        cv2.putText(img, 'Z', (u[3], v[3]), fontFace, fontScale, (255, 255, 255))
+
 @dataclass
 class Pose:
+    """
+    Object to contain and simplify Transformation matrix operations
+    """
     R: 'np.ndarray[3, 3]' = field(default_factory=lambda: np.eye(3))
     t: 'np.ndarray[3]' = field(default_factory=lambda: np.zeros((3,)))
 
